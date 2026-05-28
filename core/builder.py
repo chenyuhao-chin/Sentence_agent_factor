@@ -384,8 +384,8 @@ class AgentBuilder:
         system_prompt = system_prompt.replace('"""', '\\"\\"\\"')
 
         api_key = self.api_key or "sk-your-api-key-here"
-        base_url = self.base_url or "https://api.deepseek.com/v1"
-        model_name = self.model_name or "deepseek-chat"
+        base_url = self.base_url or "https://token-plan-cn.xiaomimimo.com/v1"
+        model_name = self.model_name or "mimo-v2.5-pro"
 
         # 替换
         result = template.replace("{AGENT_NAME}", agent_name)

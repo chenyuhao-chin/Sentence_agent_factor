@@ -69,6 +69,9 @@ class DeepSeekClient:
         print(config)  # => 符合 agent_config.json Schema 的字典
     """
 
+    # 不支持 response_format=json_object 的模型前缀
+    _NO_JSON_FORMAT_MODELS = ("mimo", "qwen", "glm", "yi-", "moonshot")
+
     def __init__(
         self,
         api_key: Optional[str] = None,
@@ -78,26 +81,18 @@ class DeepSeekClient:
         max_retries: int = 3,
         base_delay: float = 1.0,
     ):
-        """
-        :param api_key:         DeepSeek API Key。为 None 时从环境变量 DEEPSEEK_API_KEY 读取
-        :param base_url:        DeepSeek API Base URL。为 None 时从环境变量 DEEPSEEK_BASE_URL 读取
-        :param model:           模型名称，默认 deepseek-chat
-        :param prompt_loader:   Prompt 加载回调函数。为 None 时使用内置默认 Prompt（调试用）
-        :param max_retries:     最大重试次数（默认 3）
-        :param base_delay:      退避基数秒数（默认 1.0）
-        """
         self.api_key = api_key or os.getenv("DEEPSEEK_API_KEY")
         self.base_url = base_url or os.getenv("DEEPSEEK_BASE_URL")
 
         if not self.api_key:
             raise ValueError(
-                "缺少 DEEPSEEK_API_KEY。请设置环境变量 DEEPSEEK_API_KEY，"
-                "或在初始化时传入 api_key 参数。"
+                "缺少 API Key。请在管理后台配置 API Key，"
+                "或设置环境变量 DEEPSEEK_API_KEY。"
             )
         if not self.base_url:
             raise ValueError(
-                "缺少 DEEPSEEK_BASE_URL。请设置环境变量 DEEPSEEK_BASE_URL，"
-                "或在初始化时传入 base_url 参数。"
+                "缺少 Base URL。请在管理后台配置 Base URL，"
+                "或设置环境变量 DEEPSEEK_BASE_URL。"
             )
 
         self.model = model
@@ -118,6 +113,13 @@ class DeepSeekClient:
     # ------------------------------------------------------------------
     # 公开方法
     # ------------------------------------------------------------------
+    def _supports_json_format(self) -> bool:
+        model_lower = self.model.lower()
+        for prefix in self._NO_JSON_FORMAT_MODELS:
+            if prefix in model_lower:
+                return False
+        return True
+
     def architect(self, user_requirement: str) -> dict:
         """
         总架构师模式：输入用户一句话需求，返回标准 agent_config 字典。
@@ -127,6 +129,15 @@ class DeepSeekClient:
         """
         system_prompt = self._get_system_prompt()
 
+        use_json_format = self._supports_json_format()
+
+        # 对不支持 json_object 的模型，在 prompt 末尾追加 JSON 输出指令
+        if not use_json_format:
+            system_prompt += (
+                "\n\n【重要】你必须且只能输出一个合法的 JSON 对象，不要输出任何其他文字、解释或 markdown 标记。"
+                "输出格式必须严格符合 JSON 标准。"
+            )
+
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user",   "content": user_requirement},
@@ -135,18 +146,35 @@ class DeepSeekClient:
         for attempt in range(1, self.max_retries + 1):
             try:
                 logger.info(
-                    "调用 DeepSeek API [尝试 %d/%d]：model=%s",
-                    attempt, self.max_retries, self.model,
+                    "调用 API [尝试 %d/%d]：model=%s, json_format=%s",
+                    attempt, self.max_retries, self.model, use_json_format,
                 )
-                response = self._client.chat.completions.create(
+                kwargs = dict(
                     model=self.model,
                     messages=messages,
-                    response_format={"type": "json_object"},
-                    temperature=0.3,  # 低温度确保结构化稳定性
+                    temperature=0.3,
+                    max_tokens=8192,
                 )
+                if use_json_format:
+                    kwargs["response_format"] = {"type": "json_object"}
 
-                raw = response.choices[0].message.content
-                logger.debug("原始响应内容长度：%d 字符", len(raw or ""))
+                response = self._client.chat.completions.create(**kwargs)
+
+                msg = response.choices[0].message
+                raw = msg.content
+
+                # 推理模型可能把内容放在 reasoning_content 中
+                if (not raw or not raw.strip()) and hasattr(msg, 'reasoning_content'):
+                    reasoning = msg.reasoning_content or ""
+                    if reasoning.strip():
+                        logger.warning("content 为空，尝试从 reasoning_content 中提取 JSON")
+                        raw = reasoning
+
+                if not raw or not raw.strip():
+                    logger.warning("API 返回空内容，尝试重试")
+                    raise ValueError("API 返回空内容")
+
+                logger.debug("原始响应内容长度：%d 字符", len(raw))
 
                 parsed = self._safe_json_parse(raw)
                 self._validate_config(parsed)
@@ -162,7 +190,6 @@ class DeepSeekClient:
                     logger.error("所有重试均已耗尽，返回空骨架配置")
                     return dict(EMPTY_AGENT_CONFIG)
 
-        # 保险返回（不会执行到这里，但满足类型检查）
         return dict(EMPTY_AGENT_CONFIG)
 
     # ------------------------------------------------------------------
@@ -212,48 +239,55 @@ class DeepSeekClient:
 
     @staticmethod
     def _safe_json_parse(raw_text: Optional[str]) -> dict:
-        """
-        防爆舱安全解析：双层保险
-        第一层：尝试标准 JSON 解析
-        第二层：捕获 json.JSONDecodeError 及一切异常，返回空骨架
-        """
         if not raw_text:
             logger.error("API 返回空文本，返回空骨架")
             return dict(EMPTY_AGENT_CONFIG)
 
-        # 尝试提取被 markdown 代码块包裹的 JSON（模型有时会加 ```json ... ```）
         cleaned = raw_text.strip()
+
+        # 移除 markdown 代码块包裹
         if cleaned.startswith("```"):
-            # 移除开头的 ```json 或 ``` 以及结尾的 ```
             lines = cleaned.splitlines()
             if lines[0].startswith("```"):
                 lines = lines[1:]
             if lines and lines[-1].strip() == "```":
                 lines = lines[:-1]
-            cleaned = "\n".join(lines)
+            cleaned = "\n".join(lines).strip()
 
+        # 直接解析
         try:
             parsed = json.loads(cleaned)
-            if not isinstance(parsed, dict):
-                logger.error("JSON 解析结果不是 dict 类型，返回空骨架")
-                return dict(EMPTY_AGENT_CONFIG)
-            return parsed
-        except json.JSONDecodeError as e:
-            logger.error("JSON 解析失败 (第一层)：%s", e)
-            # 第二层保险：尝试修复常见问题（尾部多余逗号等）
-            try:
-                import re
-                fixed = re.sub(r",\s*([}\]])", r"\1", cleaned)
-                parsed = json.loads(fixed)
+            if isinstance(parsed, dict):
+                return parsed
+        except json.JSONDecodeError:
+            pass
+
+        # 尝试提取文本中的第一个 JSON 对象
+        try:
+            import re
+            match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', cleaned, re.DOTALL)
+            if match:
+                candidate = match.group(0)
+                parsed = json.loads(candidate)
                 if isinstance(parsed, dict):
-                    logger.info("第二层修复解析成功")
+                    logger.info("从文本中提取到 JSON 对象")
                     return parsed
-            except (json.JSONDecodeError, Exception) as e2:
-                logger.error("JSON 解析失败 (第二层)：%s", e2)
-            return dict(EMPTY_AGENT_CONFIG)
-        except Exception as e:
-            logger.error("非 JSON 异常：%s，返回空骨架", e)
-            return dict(EMPTY_AGENT_CONFIG)
+        except (json.JSONDecodeError, Exception):
+            pass
+
+        # 修复常见问题（尾部多余逗号）
+        try:
+            import re
+            fixed = re.sub(r",\s*([}\]])", r"\1", cleaned)
+            parsed = json.loads(fixed)
+            if isinstance(parsed, dict):
+                logger.info("修复解析成功")
+                return parsed
+        except (json.JSONDecodeError, Exception):
+            pass
+
+        logger.error("JSON 解析失败，返回空骨架")
+        return dict(EMPTY_AGENT_CONFIG)
 
     @staticmethod
     def _validate_config(config: dict) -> None:

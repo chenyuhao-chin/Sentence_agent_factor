@@ -193,7 +193,7 @@ _defaults = {
     "card_activated": False, "card_key": "", "card_status": "", "card_remaining": None,
     "api_key": _PERSISTED.get("api_key", ""),
     "api_base_url": _PERSISTED.get("api_base_url", ""),
-    "api_model": _PERSISTED.get("api_model", "deepseek-chat"),
+    "api_model": _PERSISTED.get("api_model", "mimo-v2.5-pro"),
     "memory_config": _PERSISTED.get("memory_config", {"max_turns": 5, "persist_strategy": "session_only"}),
     "platforms": _PERSISTED.get("platforms", ["coze", "dify", "feishu", "openclaw"]),
 }

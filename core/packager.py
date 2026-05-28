@@ -335,8 +335,8 @@ class AgentPackager:
             "# 使用方法：复制本文件，重命名为 .env，填入你的 Key 即可\n"
             "# ============================================\n\n"
             "MY_API_KEY=请填入你的API_Key\n"
-            "MY_BASE_URL=https://api.deepseek.com/v1\n"
-            "MY_MODEL_NAME=deepseek-chat\n"
+            "MY_BASE_URL=https://token-plan-cn.xiaomimimo.com/v1\n"
+            "MY_MODEL_NAME=mimo-v2.5-pro\n"
         )
 
     def _generate_launch_scripts(self) -> tuple:

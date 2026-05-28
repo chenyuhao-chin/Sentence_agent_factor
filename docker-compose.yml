@@ -28,13 +28,15 @@ services:
       - .env
     environment:
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
-      - DEEPSEEK_BASE_URL=${DEEPSEEK_BASE_URL:-https://api.deepseek.com/v1}
-      - DEEPSEEK_MODEL_NAME=${DEEPSEEK_MODEL_NAME:-deepseek-chat}
+      - DEEPSEEK_BASE_URL=${DEEPSEEK_BASE_URL:-https://token-plan-cn.xiaomimimo.com/v1}
+      - DEEPSEEK_MODEL_NAME=${DEEPSEEK_MODEL_NAME:-mimo-v2.5-pro}
     volumes:
       # 持久化：生成的 Agent 交付包
       - ./output_agents:/app/output_agents
-      # 持久化：卡密库
-      - ./cards.json:/app/cards.json
+      # 持久化：数据库 + 配置（挂载目录避免 Docker 创建目录覆盖文件）
+      - ./data:/app/data
+      # 持久化：配置文件
+      - ./.factory_config.json:/app/.factory_config.json
     restart: unless-stopped
     networks:
       - factory-net
