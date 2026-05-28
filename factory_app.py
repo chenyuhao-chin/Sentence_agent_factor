@@ -17,6 +17,32 @@ import streamlit as st
 # 将项目根目录加入 path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+# ---------------------------------------------------------------------------
+#  配置持久化（本地 JSON 文件，刷新不丢）
+# ---------------------------------------------------------------------------
+_CONFIG_PATH = Path(__file__).resolve().parent / ".factory_config.json"
+
+
+def _load_persisted_config() -> dict:
+    """从本地文件加载持久化配置"""
+    if _CONFIG_PATH.exists():
+        try:
+            return json.loads(_CONFIG_PATH.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return {}
+
+
+def _save_persisted_config(cfg: dict):
+    """保存配置到本地文件"""
+    try:
+        _CONFIG_PATH.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+
+
+_PERSISTED = _load_persisted_config()
+
 from core.llm_client import DeepSeekClient
 from core.builder import AgentBuilder
 from core.packager import AgentPackager
@@ -111,15 +137,15 @@ if "packing" not in st.session_state:
 if "pack_done" not in st.session_state:
     st.session_state.pack_done = False
 if "api_key" not in st.session_state:
-    st.session_state.api_key = ""
+    st.session_state.api_key = _PERSISTED.get("api_key", "")
 if "api_base_url" not in st.session_state:
-    st.session_state.api_base_url = ""
+    st.session_state.api_base_url = _PERSISTED.get("api_base_url", "")
 if "api_model" not in st.session_state:
-    st.session_state.api_model = "deepseek-chat"
+    st.session_state.api_model = _PERSISTED.get("api_model", "deepseek-chat")
 if "memory_config" not in st.session_state:
-    st.session_state.memory_config = {"max_turns": 5, "persist_strategy": "session_only"}
+    st.session_state.memory_config = _PERSISTED.get("memory_config", {"max_turns": 5, "persist_strategy": "session_only"})
 if "platforms" not in st.session_state:
-    st.session_state.platforms = ["coze", "dify", "feishu", "openclaw"]
+    st.session_state.platforms = _PERSISTED.get("platforms", ["coze", "dify", "feishu", "openclaw"])
 if "card_activated" not in st.session_state:
     st.session_state.card_activated = False
 if "card_key" not in st.session_state:
@@ -130,47 +156,11 @@ if "card_remaining" not in st.session_state:
     st.session_state.card_remaining = None
 
 # ---------------------------------------------------------------------------
-# 侧边栏 — API 配置 + 出货历史
+# 侧边栏 — 卡密激活 + 出货历史
 # ---------------------------------------------------------------------------
 with st.sidebar:
     st.markdown("<h3 style='font-weight:600; margin-bottom:1rem;'>🏭 Agent Factory</h3>", unsafe_allow_html=True)
-    st.caption("内部专属控制台 v1.0")
-
-    st.markdown("---")
-
-    # ---------- API 配置区 ----------
-    with st.expander("🔑 API 配置", expanded=False):
-        st.caption("生产环境用你的 Key，制作的 Agent 自带 user_key 模式，互不干扰。")
-
-        api_key_input = st.text_input(
-            "DeepSeek API Key",
-            value=st.session_state.api_key,
-            type="password",
-            placeholder="sk-xxxxxxxxxxxxxxxx",
-            key="sidebar_api_key",
-        )
-        base_url_input = st.text_input(
-            "Base URL",
-            value=st.session_state.api_base_url or "https://api.deepseek.com/v1",
-            placeholder="https://api.deepseek.com/v1",
-            key="sidebar_base_url",
-        )
-        model_input = st.text_input(
-            "Model",
-            value=st.session_state.api_model,
-            placeholder="deepseek-chat",
-            key="sidebar_model",
-        )
-
-        # 实时同步到 session_state
-        st.session_state.api_key = api_key_input
-        st.session_state.api_base_url = base_url_input
-        st.session_state.api_model = model_input
-
-        if st.session_state.api_key:
-            st.success("✅ Key 已就绪")
-        else:
-            st.warning("⚠️ 未填写 Key，召唤架构师将失败")
+    st.caption("智能体全自动生成工厂")
 
     st.markdown("---")
 
@@ -387,6 +377,15 @@ if st.session_state.architect_done and st.session_state.agent_config:
             ):
                 selected_platforms.append(key)
     st.session_state.platforms = selected_platforms or ["coze", "dify"]
+
+    # 持久化 memory_config 和 platforms
+    _save_persisted_config({
+        "api_key": st.session_state.api_key,
+        "api_base_url": st.session_state.api_base_url,
+        "api_model": st.session_state.api_model,
+        "memory_config": st.session_state.memory_config,
+        "platforms": st.session_state.platforms,
+    })
 
     st.markdown("</div>", unsafe_allow_html=True)
 

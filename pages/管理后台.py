@@ -11,12 +11,32 @@ Agent Factory — 管理后台（卡密管理）
 import random
 import string
 import sys
+import json
 from pathlib import Path
 
 import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from core.card_manager import CardManager
+
+# 配置持久化路径（与 factory_app.py 共享）
+_CONFIG_PATH = Path(__file__).resolve().parent.parent / ".factory_config.json"
+
+
+def _load_config() -> dict:
+    if _CONFIG_PATH.exists():
+        try:
+            return json.loads(_CONFIG_PATH.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return {}
+
+
+def _save_config(cfg: dict):
+    try:
+        _CONFIG_PATH.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception:
+        pass
 
 # ═══════════════════════════════════════════
 #  管理密码（请修改为你自己的密码）
@@ -50,10 +70,49 @@ if not st.session_state.admin_authenticated:
 # ---------------------------------------------------------------------------
 #  已登录：卡密管理面板
 # ---------------------------------------------------------------------------
-st.markdown("## 🔧 卡密管理")
-st.caption("生成和管理闲鱼卡密，客户无法访问此页面")
+st.markdown("## 🔧 管理后台")
+st.caption("卡密管理 + API 配置，客户无法访问此页面")
 
-tab_gen, tab_list, tab_stats = st.tabs(["🎲 生成卡密", "📋 卡密列表", "📊 统计"])
+tab_api, tab_gen, tab_list, tab_stats = st.tabs(["🔑 API 配置", "🎲 生成卡密", "📋 卡密列表", "📊 统计"])
+
+# --- API 配置 ---
+with tab_api:
+    st.markdown("### DeepSeek API 配置")
+    st.caption("配置你自己的 API Key，用于召唤架构师生成智能体。客户看不到这些配置。")
+
+    cfg = _load_config()
+
+    api_key = st.text_input(
+        "DeepSeek API Key",
+        value=cfg.get("api_key", ""),
+        type="password",
+        placeholder="sk-xxxxxxxxxxxxxxxx",
+        key="admin_api_key",
+    )
+    base_url = st.text_input(
+        "Base URL",
+        value=cfg.get("api_base_url", "https://api.deepseek.com/v1"),
+        placeholder="https://api.deepseek.com/v1",
+        key="admin_base_url",
+    )
+    model = st.text_input(
+        "Model",
+        value=cfg.get("api_model", "deepseek-chat"),
+        placeholder="deepseek-chat",
+        key="admin_model",
+    )
+
+    if st.button("💾 保存 API 配置", type="primary", use_container_width=True):
+        cfg["api_key"] = api_key
+        cfg["api_base_url"] = base_url
+        cfg["api_model"] = model
+        _save_config(cfg)
+        st.success("✅ API 配置已保存，刷新主页后生效")
+
+    if api_key:
+        st.success("✅ Key 已配置")
+    else:
+        st.warning("⚠️ 未填写 Key，主页的「召唤架构师」将无法使用")
 
 # --- 生成卡密 ---
 with tab_gen:

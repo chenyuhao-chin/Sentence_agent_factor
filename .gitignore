@@ -38,6 +38,7 @@ Thumbs.db
 .env
 .env.local
 .env.production
+.factory_config.json
 
 # pip 安装日志
 pip-log.txt
