@@ -1,0 +1,44 @@
+# ============================================================
+# Agent Factory — 一键部署编排
+# 使用方式：docker compose up -d
+# 访问地址：http://localhost:8080
+# ============================================================
+
+services:
+  # === Nginx 反代：抹平一切云平台代理兼容问题 ===
+  nginx:
+    image: nginx:alpine
+    container_name: agent-factory-nginx
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      streamlit:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - factory-net
+
+  # === Streamlit 控制台：Agent Factory 核心 ===
+  streamlit:
+    build: .
+    container_name: agent-factory-streamlit
+    env_file:
+      - .env
+    environment:
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+      - DEEPSEEK_BASE_URL=${DEEPSEEK_BASE_URL:-https://api.deepseek.com/v1}
+      - DEEPSEEK_MODEL_NAME=${DEEPSEEK_MODEL_NAME:-deepseek-chat}
+    volumes:
+      # 持久化：生成的 Agent 交付包
+      - ./output_agents:/app/output_agents
+      # 持久化：卡密库
+      - ./cards.json:/app/cards.json
+    restart: unless-stopped
+    networks:
+      - factory-net
+
+networks:
+  factory-net:
+    driver: bridge

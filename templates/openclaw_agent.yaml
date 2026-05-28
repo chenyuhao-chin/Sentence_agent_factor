@@ -1,0 +1,71 @@
+# OpenClaw Agent 接入配置模板
+# OpenClaw 是连接 IM 平台（微信/飞书/钉钉）到 Agent 的网关
+# 将此配置提供给 OpenClaw 部署方，即可将 Agent Factory 生成的 Agent 接入各个 IM 渠道
+
+agent_id: "${AGENT_NAME}"               # 由 builder.py 替换为 agent_config.agent_name
+version: "1.0"
+description: "由 Agent Factory 生成的 ${AGENT_NAME} Agent"
+
+# ========== LLM 后端配置 ==========
+llm:
+  provider: "openai_compatible"          # 兼容所有 OpenAI SDK 的后端
+  model: "${LLM_MODEL}"                  # 由用户运行时设置
+  api_key: "${LLM_API_KEY}"
+  base_url: "${LLM_BASE_URL}"
+  temperature: 0.7
+  max_tokens: 4096
+
+# ========== 系统提示词 ==========
+system_prompt: |
+  ${SYSTEM_PROMPT_PLACEHOLDER}           # 由 builder.py 替换为 agent_config.system_prompt
+
+# ========== 工作流配置 ==========
+workflow:
+  mode: "sequential"                     # sequential（顺序执行）/ conditional（条件分支）/ parallel（并行）
+  steps: ${WORKFLOW_STEPS_PLACEHOLDER}    # 由 builder.py 从 agent_config.workflow_steps 生成
+
+  # 全局门禁 ================================================================
+  global_gate:                           # 所有步骤的全局质量门禁
+    enabled: true
+    max_retries: 2                       # 每步失败最大重试次数
+    on_step_failure: "retry"             # retry / skip / abort
+    on_global_failure: "partial_output"  # partial_output / abort / fallback
+
+  # 上下文传递 ================================================================
+  context_policy:
+    mode: "cumulative"                   # cumulative（累积）/ step_only（仅上一步）/ none（无上下文）
+    max_context_tokens: 8000
+
+# ========== 渠道集成 ==========
+channels:
+  wechat_official_account:               # 微信公众号
+    enabled: false
+    app_id: "${WECHAT_APP_ID}"
+    token: "${WECHAT_TOKEN}"
+
+  feishu_bot:                            # 飞书机器人
+    enabled: false
+    app_id: "${FEISHU_APP_ID}"
+    app_secret: "${FEISHU_APP_SECRET}"
+    verification_token: "${FEISHU_VERIFICATION_TOKEN}"
+
+  dingtalk_bot:                          # 钉钉机器人
+    enabled: false
+    app_key: "${DINGTALK_APP_KEY}"
+    app_secret: "${DINGTALK_APP_SECRET}"
+
+  web_api:                               # 通用 HTTP API
+    enabled: true                        # 默认启用 Web API
+    auth_type: "bearer_token"            # bearer_token / api_key / none
+
+# ========== 记忆管理 ==========
+memory:
+  type: "session_cache"                  # session_cache（会话级内存）/ persistent（持久化）/ none
+  ttl: 3600                              # 会话有效期（秒）
+  max_entries: 50                        # 最大记忆条目数
+
+# ========== 输出格式 ==========
+output:
+  format: "markdown"                     # markdown / json / plain
+  include_thought_trace: true            # 是否输出思考链
+  include_confidence: true               # 是否输出置信度

@@ -1,0 +1,56 @@
+{
+  "_comment": "============================================================",
+  "_comment2": "Coze 机器人 — 导入配置文件",
+  "_comment3": "============================================================",
+  "_comment4": "把这个文件导入 Coze，就能一键创建「{AGENT_NAME}」机器人。",
+  "_comment5": "适用场景：{AGENT_SCENARIO}",
+  "_comment6": "============================================================",
+  "_comment7": "导入步骤：",
+  "_comment8": "1. 打开 https://www.coze.com → 创建 Bot → 导入配置",
+  "_comment9": "2. 选择本文件，点击导入",
+  "_comment10": "3. 替换_API_Key 为你自己的 Key",
+  "_comment11": "4. 发布 → 绑定飞书/微信/Web → 开始使用",
+  "_comment12": "============================================================",
+
+  "bot_name": "{AGENT_NAME}",
+  "description": "专为 {AGENT_SCENARIO} 场景定制的高端 AI 助手",
+  "icon_uri": "",
+
+  "persona": {
+    "role": "{AGENT_NAME}",
+    "expertise": ["{AGENT_SCENARIO}"],
+    "communication_style": "专业、清晰、有条理",
+    "constraints": [
+      "严格遵循 System Prompt 中的工作流约束",
+      "输出结构化的结果，便于用户直接使用",
+      "遇到不确定的内容主动询问，不编造信息"
+    ]
+  },
+
+  "prompt": {
+    "system_prompt": "{SYSTEM_PROMPT_ESCAPED}",
+    "few_shot_examples": []
+  },
+
+  "model_config": {
+    "provider": "openai_compatible",
+    "model": "deepseek-chat",
+    "base_url": "https://api.deepseek.com/v1",
+    "api_key": "你的_API_Key",
+    "temperature": 0.7,
+    "max_tokens": 4096
+  },
+
+  "plugin_config": {
+    "enabled_plugins": [],
+    "tools": []
+  },
+
+  "publish_config": {
+    "platforms": ["feishu", "wechat", "web"],
+    "web_config": {
+      "theme_color": "#1a1a2e",
+      "welcome_message": "你好！我是「{AGENT_NAME}」，专注于 {AGENT_SCENARIO}。有什么可以帮你的？"
+    }
+  }
+}

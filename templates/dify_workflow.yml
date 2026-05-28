@@ -1,0 +1,341 @@
+# ============================================================
+# Dify 工作流 — 导入配置文件（V2.0 多步骤 + 条件分支 + 知识库）
+# ============================================================
+# 把这个文件导入 Dify，就能一键创建「{AGENT_NAME}」工作流助手。
+# 适用场景：{AGENT_SCENARIO}
+#
+# 导入步骤：
+# 1. 打开你的 Dify 控制台（本地部署或 dify.ai 云端版）
+# 2. 点击「创建应用」→「导入 DSL」
+# 3. 选择本文件，点击导入
+# 4. 在「模型配置」中填入你的 API Key
+# 5. 如有知识库节点，挂载你的知识库
+# 6. 点击「发布」→ 生成分享链接或嵌入你的网站
+# ============================================================
+
+app:
+  name: "{AGENT_NAME}"
+  description: "专为 {AGENT_SCENARIO} 场景定制的高端 AI 工作流助手"
+  mode: "advanced-chat"
+  icon: "🤖"
+  icon_background: "#1a1a2e"
+
+version: "0.2.0"
+kind: "app"
+
+model_config:
+  provider: "openai_api_compatible"
+  model_id: "deepseek-chat"
+  model_config:
+    name: "DeepSeek V3"
+    provider: "openai_api_compatible"
+    model_name: "deepseek-chat"
+    mode: "chat"
+    completion_params:
+      temperature: 0.7
+      max_tokens: 4096
+
+# ============================================================
+# 多步骤工作流 — 由 Agent Factory 根据 workflow_steps 自动生成
+# ============================================================
+workflow:
+  graph:
+    nodes:
+      # ====== 开始节点 ======
+      - id: "start"
+        type: "start"
+        position:
+          x: 80
+          y: 160
+        data:
+          title: "开始"
+          type: "start"
+          variables:
+            - variable: "user_query"
+              label: "用户输入"
+              type: "paragraph"
+              required: true
+
+      # ====== 知识库检索节点（仅当步骤涉及 RAG/知识库时启用）======
+      # 如果步骤2标注了「【此步骤由平台知识库节点执行】」，启用此节点
+      # 否则可以在导入后删除此节点
+      - id: "knowledge_retrieval"
+        type: "knowledge-retrieval"
+        position:
+          x: 300
+          y: 60
+        data:
+          title: "知识库检索"
+          type: "knowledge-retrieval"
+          query_variable_selector:
+            - "start"
+            - "user_query"
+          result_variable: "knowledge_context"
+          # 导入后请在此处挂载你的知识库
+          # retrieval_mode: "hybrid"  # hybrid / semantic / keyword
+          # top_k: 5
+          # score_threshold: 0.5
+
+      # ====== 条件分支节点（门禁检查）======
+      # 在步骤完成后检查 gate 条件，决定是继续下一步还是重试/终止
+      - id: "if_else_gate"
+        type: "if-else"
+        position:
+          x: 500
+          y: 450
+        data:
+          title: "质量门禁检查"
+          type: "if-else"
+          cases:
+            - case_id: "pass"
+              logical_operator: "and"
+              conditions:
+                - variable_selector:
+                    - "{PREV_STEP_ID}"
+                    - "text"
+                  comparison_operator: "not empty"
+                - variable_selector:
+                    - "{PREV_STEP_ID}"
+                    - "text"
+                  comparison_operator: "length >"
+                  value: "100"
+            - case_id: "retry"
+              logical_operator: "or"
+              conditions:
+                - variable_selector:
+                    - "{PREV_STEP_ID}"
+                    - "text"
+                  comparison_operator: "empty"
+                - variable_selector:
+                    - "{PREV_STEP_ID}"
+                    - "text"
+                  comparison_operator: "length <="
+                  value: "100"
+
+      # ====== LLM 节点模板 — 每个 workflow_step 生成一个 LLM 节点 ======
+      # 节点 ID 格式: llm_step_{N}
+      # 如果调用外部 API，可替换为 code 节点或 http-request 节点
+
+      - id: "llm_step_1"
+        type: "llm"
+        position:
+          x: 300
+          y: 160
+        data:
+          title: "{STEP_1_NAME}"
+          type: "llm"
+          model:
+            provider: "openai_api_compatible"
+            name: "deepseek-chat"
+            mode: "chat"
+            completion_params:
+              temperature: 0.7
+              max_tokens: 4096
+          prompt_template:
+            - role: "system"
+              text: "{STEP_1_PROMPT_ESCAPED}"
+            - role: "user"
+              text: "用户需求: {{#start.user_query#}}"
+          memory:
+            window:
+              enabled: false
+          variables: []
+
+      - id: "llm_step_2"
+        type: "llm"
+        position:
+          x: 520
+          y: 160
+        data:
+          title: "{STEP_2_NAME}"
+          type: "llm"
+          model:
+            provider: "openai_api_compatible"
+            name: "deepseek-chat"
+            mode: "chat"
+            completion_params:
+              temperature: 0.7
+              max_tokens: 4096
+          prompt_template:
+            - role: "system"
+              text: "{STEP_2_PROMPT_ESCAPED}"
+            - role: "user"
+              text: |
+                用户原始需求: {{#start.user_query#}}
+                
+                --- 上一步输出 ---
+                {{#llm_step_1.text#}}
+                ---
+                
+                请基于以上信息执行当前步骤。
+          memory:
+            window:
+              enabled: false
+          variables: []
+
+      - id: "llm_step_3"
+        type: "llm"
+        position:
+          x: 740
+          y: 160
+        data:
+          title: "{STEP_3_NAME}"
+          type: "llm"
+          model:
+            provider: "openai_api_compatible"
+            name: "deepseek-chat"
+            mode: "chat"
+            completion_params:
+              temperature: 0.7
+              max_tokens: 4096
+          prompt_template:
+            - role: "system"
+              text: "{STEP_3_PROMPT_ESCAPED}"
+            - role: "user"
+              text: |
+                用户原始需求: {{#start.user_query#}}
+                
+                --- 前两步输出摘要 ---
+                步骤1结果: {{#llm_step_1.text#}}
+                步骤2结果: {{#llm_step_2.text#}}
+                ---
+                
+                请基于以上信息执行当前步骤。
+          memory:
+            window:
+              enabled: false
+          variables: []
+
+      - id: "llm_step_4"
+        type: "llm"
+        position:
+          x: 960
+          y: 160
+        data:
+          title: "{STEP_4_NAME}"
+          type: "llm"
+          model:
+            provider: "openai_api_compatible"
+            name: "deepseek-chat"
+            mode: "chat"
+            completion_params:
+              temperature: 0.7
+              max_tokens: 4096
+          prompt_template:
+            - role: "system"
+              text: "{STEP_4_PROMPT_ESCAPED}"
+            - role: "user"
+              text: |
+                用户原始需求: {{#start.user_query#}}
+                
+                --- 前面步骤输出摘要 ---
+                步骤1: {{#llm_step_1.text#}}
+                步骤2: {{#llm_step_2.text#}}
+                步骤3: {{#llm_step_3.text#}}
+                ---
+                
+                请基于以上信息执行当前步骤。
+          memory:
+            window:
+              enabled: false
+          variables: []
+
+      - id: "llm_step_5"
+        type: "llm"
+        position:
+          x: 1180
+          y: 160
+        data:
+          title: "{STEP_5_NAME}"
+          type: "llm"
+          model:
+            provider: "openai_api_compatible"
+            name: "deepseek-chat"
+            mode: "chat"
+            completion_params:
+              temperature: 0.7
+              max_tokens: 4096
+          prompt_template:
+            - role: "system"
+              text: "{STEP_5_PROMPT_ESCAPED}"
+            - role: "user"
+              text: |
+                用户原始需求: {{#start.user_query#}}
+                
+                --- 前面步骤输出摘要 ---
+                步骤1: {{#llm_step_1.text#}}
+                步骤2: {{#llm_step_2.text#}}
+                步骤3: {{#llm_step_3.text#}}
+                步骤4: {{#llm_step_4.text#}}
+                ---
+                
+                请基于以上信息执行当前步骤。这是工作流的最后一步，请输出完整的最终结果。
+          memory:
+            window:
+              enabled: false
+          variables: []
+
+      # ====== 汇总/答案节点 ======
+      - id: "final_answer"
+        type: "answer"
+        position:
+          x: 1400
+          y: 160
+        data:
+          title: "最终输出"
+          type: "answer"
+          answer: |
+            {{#llm_step_{FINAL_STEP_N}.text#}}
+
+    # ====== 连接边（Edges）======
+    edges:
+      # --- 基础路径：有知识库时 ---
+      - source: "start"
+        target: "knowledge_retrieval"
+        data:
+          title: "预检索"
+      - source: "knowledge_retrieval"
+        target: "llm_step_1"
+        data:
+          title: "注入检索上下文"
+
+      # --- 步骤顺序连接 ---
+      - source: "llm_step_1"
+        target: "llm_step_2"
+        data:
+          title: "步骤1→步骤2"
+      - source: "llm_step_2"
+        target: "llm_step_3"
+        data:
+          title: "步骤2→步骤3"
+      - source: "llm_step_3"
+        target: "llm_step_4"
+        data:
+          title: "步骤3→步骤4"
+      - source: "llm_step_4"
+        target: "llm_step_5"
+        data:
+          title: "步骤4→步骤5"
+
+      # --- 最终输出 ---
+      - source: "llm_step_{FINAL_STEP_N}"
+        target: "final_answer"
+        data:
+          title: "交付用户"
+
+    viewport:
+      x: 0
+      y: 0
+      zoom: 0.7
+
+# ============================================================
+# 导入后配置指南
+# ============================================================
+# 1. 模型配置：在「模型供应商」中配置你的 API Key 和 Base URL
+# 2. 知识库：如果有 knowledge_retrieval 节点，点击节点挂载你的知识库
+# 3. 步骤裁剪：如果工作流不足 5 步，删除多余的 llm_step_N 节点和对应边
+# 4. 步骤扩展：如果超过 5 步，按 llm_step_5 的模板添加更多节点
+# 5. 外部 API：将 llm_step 替换为 http-request 节点可实现对外部 API 的调用
+# 6. 条件分支：将 edge 的 target 从下一步改为 if_else_gate，根据 gate 结果路由
+# 7. 发布后获得分享链接，可嵌入网站或直接使用
+# ============================================================

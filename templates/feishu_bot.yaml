@@ -1,0 +1,62 @@
+# ============================================================
+# 飞书自定义机器人 — 配置指南
+# ============================================================
+# 本文件告诉你如何把「{AGENT_NAME}」部署到飞书群聊中。
+# 跟着下面的步骤做，大约 10 分钟完成部署。
+#
+# 适用场景：{AGENT_SCENARIO}
+# ============================================================
+
+# ── 第 1 步：创建飞书应用 ──
+# 1. 打开 https://open.feishu.cn/app
+# 2. 点击「创建企业自建应用」
+# 3. 应用名称填写：{AGENT_NAME}
+# 4. 创建完成后，记下 App ID 和 App Secret
+
+app_config:
+  app_id: "cli_xxxxxxxxxxxxxxxx"          # 替换为你的 App ID
+  app_secret: "xxxxxxxxxxxxxxxxxxxxxxxx"   # 替换为你的 App Secret
+
+# ── 第 2 步：配置机器人能力 ──
+# 在飞书开放平台 → 应用功能 → 机器人 → 启用
+bot_config:
+  enable_bot: true
+  bot_name: "{AGENT_NAME}"
+
+# ── 第 3 步：配置事件订阅（接收群消息） ──
+# 在飞书开放平台 → 事件订阅 → 配置
+# 你需要一个公网服务器来接收飞书的回调事件。
+# 建议使用：
+#   - 阿里云/腾讯云轻量服务器（最稳定）
+#   - Railway / Render（免费免备案）
+#   - ngrok（本地调试用）
+
+event_subscription:
+  # 把 app.py 部署到服务器后，Webhook 回调地址填：
+  callback_url: "https://你的服务器地址/webhook/feishu"
+  
+  # 订阅以下事件：
+  subscribed_events:
+    - "im.message.receive_v1"      # 接收群消息
+    - "im.message.group_at"        # 接收 @机器人消息
+
+  # 在飞书后台生成的 Token，填到这里：
+  verification_token: "xxxxxxxxxxxxxxxx"
+  encrypt_key: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+# ── 第 4 步：发布应用 ──
+# 1. 在飞书开放平台 → 版本管理与发布 → 创建版本
+# 2. 提交审核（企业自建应用通常秒过）
+# 3. 发布后，在飞书群聊中添加机器人即可使用
+
+# ── 第 5 步：启动 Webhook 服务 ──
+# 在你的服务器上运行：
+#   pip install -r requirements.txt
+#   python3 app.py --mode feishu --port 8080
+#
+# 确保服务器防火墙开放 8080 端口，并配置好反向代理（nginx）。
+
+# ============================================================
+# 提示：所有以「你的」开头的字段需要替换为你的实际信息。
+# 如有疑问，参考飞书开放平台文档：https://open.feishu.cn/document
+# ============================================================

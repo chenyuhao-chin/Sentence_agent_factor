@@ -1,0 +1,19 @@
+# Docker 构建忽略
+.git
+.gitignore
+output_agents/
+__pycache__/
+*.pyc
+.env
+.DS_Store
+.venv/
+venv/
+node_modules/
+releases/
+*.zip
+docs/
+docker/
+.idea/
+.vscode/
+.pytest_cache/
+改进目标V1.0.md

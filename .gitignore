@@ -1,0 +1,57 @@
+# Python 字节码
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# 虚拟环境
+venv/
+.venv/
+env/
+.env/
+
+# 编译产物
+build/
+dist/
+*.spec
+
+# 输出交付物（保留目录结构，过滤脚本）
+output_agents/*.py
+output_agents/*.exe
+output_agents/*.zip
+output_agents/*.tar.gz
+
+# IDE 配置
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 系统缓存
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+
+# 环境变量（生产 Key 绝对不入库）
+.env
+.env.local
+.env.production
+
+# pip 安装日志
+pip-log.txt
+pip-delete-this-directory.txt
+
+# pytest 缓存
+.pytest_cache/
+
+# === Agent Factory 商业化部署 ===
+.env
+output_agents/
+*.zip
+__debug_bin*
+
+# 商业 Prompt 保护（纯净版仓库不包含）
+prompts/architect.md
+releases/
