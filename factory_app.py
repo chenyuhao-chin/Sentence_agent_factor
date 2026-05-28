@@ -222,6 +222,57 @@ with st.sidebar:
 
     st.markdown("---")
 
+    # ---------- 卡密管理（后台生成） ----------
+    with st.expander("🔧 卡密管理", expanded=False):
+        st.caption("生成新卡密，用于闲鱼发货")
+
+        gen_type = st.selectbox(
+            "卡密类型",
+            options=["monthly", "times"],
+            format_func=lambda x: "月卡（30天无限用）" if x == "monthly" else "次卡（按次扣减）",
+            key="gen_card_type",
+        )
+        gen_prefix = st.text_input("卡密前缀", value="FX", key="gen_card_prefix")
+        gen_count = st.number_input("生成数量", min_value=1, max_value=100, value=5, key="gen_card_count")
+        gen_quota = 10
+        if gen_type == "times":
+            gen_quota = st.number_input("每次卡次数", min_value=1, max_value=100, value=10, key="gen_card_quota")
+
+        if st.button("🎲 生成卡密", use_container_width=True):
+            import random
+            import string
+            card_mgr_gen = CardManager()
+            generated = []
+            for _ in range(gen_count):
+                suffix = "".join(random.choices(string.ascii_uppercase + string.digits, k=4))
+                key = f"{gen_prefix}-{gen_type.upper()[:6]}-{suffix}"
+                if card_mgr_gen.generate_card(key, gen_type, quota=gen_quota):
+                    generated.append(key)
+            if generated:
+                st.success(f"✅ 已生成 {len(generated)} 张卡密")
+                st.code("\n".join(generated), language=None)
+                st.caption("复制以上卡密，发给买家即可")
+
+        st.markdown("---")
+        st.caption("已有卡密一览")
+        card_mgr_list = CardManager()
+        all_cards = card_mgr_list.list_cards()
+        if all_cards:
+            for k, v in all_cards.items():
+                ctype = "月卡" if v.get("type") == "monthly" else "次卡"
+                cstatus = v.get("status", "")
+                if v.get("type") == "monthly":
+                    expire = v.get("expire_time", "未激活")
+                    detail = f"到期: {expire}"
+                else:
+                    detail = f"剩余: {v.get('remaining_quota', '?')}次"
+                icon = "🟢" if cstatus == "active" else "🔴"
+                st.caption(f"{icon} `{k}` · {ctype} · {detail} · {cstatus}")
+        else:
+            st.caption("暂无卡密")
+
+    st.markdown("---")
+
     st.markdown("<div class='card-title'>📋 出货历史</div>", unsafe_allow_html=True)
 
     if st.session_state.history:
