@@ -43,7 +43,7 @@ from core.card_manager import CardManager
 #  页面配置
 # ---------------------------------------------------------------------------
 st.set_page_config(
-    page_title="Sentence",
+    page_title="Sentence Agent Factory",
     page_icon="S",
     layout="centered",
     initial_sidebar_state="expanded",
@@ -206,7 +206,7 @@ for k, v in _defaults.items():
 #  侧边栏 — 卡密 + 历史
 # ---------------------------------------------------------------------------
 with st.sidebar:
-    st.markdown("### Sentence")
+    st.markdown("### Sentence Agent Factory")
     st.caption("智能体全自动生成")
     st.markdown("---")
 
@@ -267,10 +267,10 @@ if _logo_path.exists():
     with col_logo:
         st.image(str(_logo_path), width=80)
     with col_title:
-        st.markdown("## Sentence")
+        st.markdown("## Sentence Agent Factory")
         st.caption("描述需求 / AI 设计 / 一键交付完整的智能体")
 else:
-    st.markdown("## Sentence")
+    st.markdown("## Sentence Agent Factory")
     st.caption("描述需求 / AI 设计 / 一键交付完整的智能体")
 
 st.markdown("")
@@ -540,4 +540,4 @@ if st.session_state.pack_done and st.session_state.last_zip_path:
 #  Footer
 # ---------------------------------------------------------------------------
 st.markdown("---")
-st.caption("Sentence / Powered by AI")
+st.caption("Sentence Agent Factory / Powered by AI")
