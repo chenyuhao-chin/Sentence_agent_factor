@@ -35,6 +35,7 @@ usage() {
     echo "  clean       完全清理（删除容器、镜像、构建缓存）"
     echo ""
     echo "启动后访问: ${GREEN}http://localhost:8080${NC}"
+    echo "外网访问:   ${GREEN}http://103.236.98.149:29187${NC}"
     echo ""
 }
 
@@ -74,7 +75,8 @@ cmd_start() {
     # 检查是否已在运行
     if docker compose ps --services --filter "status=running" 2>/dev/null | grep -q .; then
         echo -e "${GREEN}✅ 服务已在运行中${NC}"
-        echo -e "   访问: ${GREEN}http://localhost:8080${NC}"
+    echo -e "   访问: ${GREEN}http://localhost:8080${NC}"
+        echo -e "   外网: ${GREEN}http://103.236.98.149:29187${NC}"
         return
     fi
 
@@ -85,7 +87,8 @@ cmd_start() {
     echo -e "${GREEN}╔══════════════════════════════════════╗${NC}"
     echo -e "${GREEN}║  ✅ Agent Factory 启动成功！         ║${NC}"
     echo -e "${GREEN}╠══════════════════════════════════════╣${NC}"
-    echo -e "${GREEN}║  访问地址: http://localhost:8080     ║${NC}"
+    echo -e "${GREEN}║  本地访问: http://localhost:8080     ║${NC}"
+    echo -e "${GREEN}║  外网访问: http://103.236.98.149:29187 ║${NC}"
     echo -e "${GREEN}╚══════════════════════════════════════╝${NC}"
     echo ""
 }
@@ -104,6 +107,7 @@ cmd_restart() {
     docker compose up -d --build
     echo -e "${GREEN}✅ 重启完成${NC}"
     echo -e "   访问: ${GREEN}http://localhost:8080${NC}"
+    echo -e "   外网: ${GREEN}http://103.236.98.149:29187${NC}"
 }
 
 cmd_logs() {
@@ -119,6 +123,7 @@ cmd_status() {
     docker compose ps
     echo ""
     echo -e "访问地址: ${GREEN}http://localhost:8080${NC}"
+    echo -e "外网地址: ${GREEN}http://103.236.98.149:29187${NC}"
     echo ""
 }
 

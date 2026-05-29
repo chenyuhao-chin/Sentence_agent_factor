@@ -10,7 +10,7 @@ services:
     image: nginx:alpine
     container_name: agent-factory-nginx
     ports:
-      - "8080:8080"
+      - "29187:8080"
     volumes:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
@@ -28,8 +28,8 @@ services:
       - .env
     environment:
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
-      - DEEPSEEK_BASE_URL=${DEEPSEEK_BASE_URL:-https://token-plan-cn.xiaomimimo.com/v1}
-      - DEEPSEEK_MODEL_NAME=${DEEPSEEK_MODEL_NAME:-mimo-v2.5-pro}
+      - DEEPSEEK_BASE_URL=${DEEPSEEK_BASE_URL:-https://api.deepseek.com/v1}
+      - DEEPSEEK_MODEL_NAME=${DEEPSEEK_MODEL_NAME:-deepseek-chat}
     volumes:
       # 持久化：生成的 Agent 交付包
       - ./output_agents:/app/output_agents

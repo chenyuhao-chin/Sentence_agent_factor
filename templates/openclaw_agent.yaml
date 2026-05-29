@@ -7,11 +7,13 @@ version: "1.0"
 description: "由 Agent Factory 生成的 ${AGENT_NAME} Agent"
 
 # ========== LLM 后端配置 ==========
+# 兼容所有 OpenAI SDK 兼容接口（DeepSeek / 通义千问 / 智谱GLM / 小米MiMo / Claude 中转 / 本地 vLLM 等）
+# 只需修改 base_url / model / api_key 即可切换任意模型
 llm:
   provider: "openai_compatible"          # 兼容所有 OpenAI SDK 的后端
-  model: "${LLM_MODEL}"                  # 由用户运行时设置
-  api_key: "${LLM_API_KEY}"
-  base_url: "${LLM_BASE_URL}"
+  model: "${LLM_MODEL}"                  # 由用户运行时设置（如 deepseek-chat / qwen-plus / glm-4 等）
+  api_key: "${LLM_API_KEY}"              # 对应模型平台的 API Key
+  base_url: "${LLM_BASE_URL}"            # 对应模型平台的 API 地址（含 /v1）
   temperature: 0.7
   max_tokens: 4096
 
@@ -37,26 +39,31 @@ workflow:
     max_context_tokens: 8000
 
 # ========== 渠道集成 ==========
+# OpenClaw 官方渠道配置格式（camelCase 字段名）
+# 飞书使用 WebSocket 长连接模式，无需公网 IP、无需回调地址
 channels:
+  feishu:                                # 飞书机器人（WebSocket 长连接）
+    enabled: true                        # 默认启用，导入即用
+    appId: "${FEISHU_APP_ID}"            # 飞书开放平台 → 应用凭证 → App ID
+    appSecret: "${FEISHU_APP_SECRET}"    # 飞书开放平台 → 应用凭证 → App Secret
+    verificationToken: "${FEISHU_VERIFICATION_TOKEN}"  # 事件订阅 → Verification Token
+    encryptKey: "${FEISHU_ENCRYPT_KEY}"  # 事件订阅 → Encrypt Key（可留空）
+    connectionMode: "websocket"          # websocket 长连接（推荐，无需公网IP）
+    domain: "feishu"                     # 飞书域名标识
+
   wechat_official_account:               # 微信公众号
     enabled: false
-    app_id: "${WECHAT_APP_ID}"
+    appId: "${WECHAT_APP_ID}"
     token: "${WECHAT_TOKEN}"
-
-  feishu_bot:                            # 飞书机器人
-    enabled: false
-    app_id: "${FEISHU_APP_ID}"
-    app_secret: "${FEISHU_APP_SECRET}"
-    verification_token: "${FEISHU_VERIFICATION_TOKEN}"
 
   dingtalk_bot:                          # 钉钉机器人
     enabled: false
-    app_key: "${DINGTALK_APP_KEY}"
-    app_secret: "${DINGTALK_APP_SECRET}"
+    appKey: "${DINGTALK_APP_KEY}"
+    appSecret: "${DINGTALK_APP_SECRET}"
 
   web_api:                               # 通用 HTTP API
     enabled: true                        # 默认启用 Web API
-    auth_type: "bearer_token"            # bearer_token / api_key / none
+    authType: "bearer_token"             # bearer_token / api_key / none
 
 # ========== 记忆管理 ==========
 memory:

@@ -43,6 +43,7 @@ data/factory_config.json
 
 # 数据库
 data/
+data/session_state.json
 cards.json
 
 # pip 安装日志

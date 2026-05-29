@@ -198,23 +198,6 @@ class AgentPackager:
 
         try:
             with zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED) as zf:
-                # 0. agent-meta.json —— 统一元数据（所有平台第一入口）
-                try:
-                    meta_json = self._build_agent_meta()
-                    zf.writestr("agent-meta.json", meta_json)
-                    logger.info("agent-meta.json 已注入")
-                except Exception as meta_err:
-                    logger.warning("agent-meta.json 生成失败: %s", meta_err)
-
-                # 0b. prompt_pack —— 内核层 4 个 .md 文件
-                try:
-                    prompt_files = self._build_prompt_pack_files()
-                    for arcname, content in prompt_files.items():
-                        zf.writestr(arcname, content)
-                        logger.info("%s 已注入", arcname)
-                except Exception as pp_err:
-                    logger.warning("prompt_pack 生成失败: %s", pp_err)
-
                 # 1. 主程序 CLI 版
                 zf.write(self.script_path, arcname="app.py")
                 logger.info("app.py (CLI) 已注入")
@@ -239,29 +222,15 @@ class AgentPackager:
                 zf.writestr("一键启动_Mac.sh", sh_content)
                 logger.info("启动脚本已注入")
 
-                # 4b. import.sh —— 一键导入脚本（自动检测平台）
-                import_sh = self._generate_import_sh()
-                zf.writestr("import.sh", import_sh)
-                logger.info("import.sh 已注入")
-
                 # 5. Word 说明书（主交付文档）
-                docx_ok = False
                 try:
                     docx_bytes = self._generate_docx_manual()
                     zf.writestr("使用说明书.docx", docx_bytes)
-                    docx_ok = True
                     logger.info("使用说明书.docx 已注入")
                 except Exception as docx_err:
                     logger.warning("docx 生成失败: %s", docx_err)
 
-                # 6. Markdown 说明书（降级 or 纯文本补充）
-                md_manual = self._generate_md_manual()
-                if md_manual:
-                    zf.writestr("使用说明书.md", md_manual)
-                    label = "纯文本版本" if docx_ok else "降级方案"
-                    logger.info("使用说明书.md 已注入 (%s)", label)
-
-                # 7. 平台部署文件（adapters/ 子目录）
+                # 6. 平台部署文件（adapters/ 子目录）
                 platform_files = self._generate_platform_files()
                 for arcname, content in platform_files.items():
                     zf.writestr(arcname, content)
@@ -273,7 +242,7 @@ class AgentPackager:
                 output_path=str(output_path),
                 message=(
                     "交付包已生成\n"
-                    "包含：agent-meta.json + prompts/ + adapters/ + import.sh + 主程序 + Word 说明书"
+                    "包含：主程序 + 启动脚本 + 配置模板 + Word 说明书 + adapters/ 平台部署文件"
                 ),
             )
 
@@ -333,10 +302,16 @@ class AgentPackager:
             "# ============================================\n"
             "# API Key 配置文件\n"
             "# 使用方法：复制本文件，重命名为 .env，填入你的 Key 即可\n"
+            "#\n"
+            "# 支持所有 OpenAI 兼容接口：\n"
+            "#   DeepSeek:  BASE_URL=https://api.deepseek.com/v1     MODEL=deepseek-chat\n"
+            "#   通义千问:   BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1  MODEL=qwen-plus\n"
+            "#   智谱GLM:   BASE_URL=https://open.bigmodel.cn/api/paas/v4  MODEL=glm-4-flash\n"
+            "#   小米MiMo:  BASE_URL=https://token-plan-cn.xiaomimimo.com/v1  MODEL=mimo-v2.5-pro\n"
             "# ============================================\n\n"
             "MY_API_KEY=请填入你的API_Key\n"
-            "MY_BASE_URL=https://token-plan-cn.xiaomimimo.com/v1\n"
-            "MY_MODEL_NAME=mimo-v2.5-pro\n"
+            "MY_BASE_URL=https://api.deepseek.com/v1\n"
+            "MY_MODEL_NAME=deepseek-chat\n"
         )
 
     def _generate_launch_scripts(self) -> tuple:

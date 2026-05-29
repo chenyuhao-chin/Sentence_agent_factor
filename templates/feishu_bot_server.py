@@ -27,10 +27,10 @@ FEISHU_APP_SECRET = os.getenv("FEISHU_APP_SECRET", "")
 FEISHU_VERIFICATION_TOKEN = os.getenv("FEISHU_VERIFICATION_TOKEN", "")
 FEISHU_ENCRYPT_KEY = os.getenv("FEISHU_ENCRYPT_KEY", "")
 
-# LLM API 配置
+# LLM API 配置（兼容所有 OpenAI 兼容接口：DeepSeek / 通义千问 / 智谱GLM / 小米MiMo / Claude 中转等）
 LLM_API_KEY = os.getenv("LLM_API_KEY", "")
-LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://api.deepseek.com/v1")
-LLM_MODEL = os.getenv("LLM_MODEL", "deepseek-chat")
+LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://your-api-provider.com/v1")
+LLM_MODEL = os.getenv("LLM_MODEL", "your-model-name")
 
 app = FastAPI(title="Agent Factory Feishu Bot")
 

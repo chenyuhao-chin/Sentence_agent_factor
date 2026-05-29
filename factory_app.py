@@ -21,6 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 #  配置持久化
 # ---------------------------------------------------------------------------
 _CONFIG_PATH = Path(__file__).resolve().parent / "data" / "factory_config.json"
+_STATE_PATH = Path(__file__).resolve().parent / "data" / "session_state.json"
 
 
 def _load_persisted_config() -> dict:
@@ -40,7 +41,25 @@ def _save_persisted_config(cfg: dict):
         pass
 
 
+def _load_session_state() -> dict:
+    if _STATE_PATH.exists():
+        try:
+            return json.loads(_STATE_PATH.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return {}
+
+
+def _save_session_state(state: dict):
+    try:
+        _STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        _STATE_PATH.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+
+
 _PERSISTED = _load_persisted_config()
+_SAVED_STATE = _load_session_state()
 
 from core.llm_client import DeepSeekClient
 from core.builder import AgentBuilder
@@ -192,16 +211,21 @@ hr { border-color: #d6e4f0 !important; }
 #  Session State
 # ---------------------------------------------------------------------------
 _defaults = {
-    "agent_config": None, "system_prompt": "", "agent_name": "",
+    "agent_config": _SAVED_STATE.get("agent_config"),
+    "system_prompt": _SAVED_STATE.get("system_prompt", ""),
+    "agent_name": _SAVED_STATE.get("agent_name", ""),
     "delivery_type": "CLI",
-    "calling_architect": False, "architect_done": False,
-    "packing": False, "pack_done": False,
-    "last_zip_path": "", "last_script_path": "",
-    "history": [],
+    "calling_architect": False,
+    "architect_done": _SAVED_STATE.get("architect_done", False),
+    "packing": False,
+    "pack_done": _SAVED_STATE.get("pack_done", False),
+    "last_zip_path": _SAVED_STATE.get("last_zip_path", ""),
+    "last_script_path": "",
+    "history": _SAVED_STATE.get("history", []),
     "card_activated": False, "card_key": "", "card_status": "", "card_remaining": None,
     "api_key": _PERSISTED.get("api_key", ""),
     "api_base_url": _PERSISTED.get("api_base_url", ""),
-    "api_model": _PERSISTED.get("api_model", "mimo-v2.5-pro"),
+    "api_model": _PERSISTED.get("api_model", ""),
     "memory_config": _PERSISTED.get("memory_config", {"max_turns": 5, "persist_strategy": "session_only"}),
     "platforms": _PERSISTED.get("platforms", ["coze", "dify", "feishu", "openclaw"]),
 }
@@ -377,7 +401,7 @@ if architect_btn:
             client = DeepSeekClient(
                 api_key=st.session_state.api_key or os.getenv("DEEPSEEK_API_KEY"),
                 base_url=st.session_state.api_base_url or os.getenv("DEEPSEEK_BASE_URL"),
-                model=st.session_state.api_model or "deepseek-chat",
+                model=st.session_state.api_model or os.getenv("DEEPSEEK_MODEL_NAME", ""),
             )
             config = client.architect(requirement)
             if config and config.get("agent_name"):
@@ -385,6 +409,15 @@ if architect_btn:
                 st.session_state.system_prompt = config.get("system_prompt", "")
                 st.session_state.agent_name = config.get("agent_name", "")
                 st.session_state.architect_done = True
+                _save_session_state({
+                    "agent_config": config,
+                    "system_prompt": config.get("system_prompt", ""),
+                    "agent_name": config.get("agent_name", ""),
+                    "architect_done": True,
+                    "pack_done": False,
+                    "last_zip_path": "",
+                    "history": st.session_state.history,
+                })
                 st.rerun()
             else:
                 st.error("架构师返回空配置，请稍后重试")
@@ -464,10 +497,10 @@ if st.session_state.architect_done and st.session_state.agent_config:
     card_status = card_mgr.get_status(st.session_state.card_key)
     card_ok = card_status.get("activated", False)
 
-    if not card_ok:
-        st.warning("请先在左侧侧边栏激活卡密后再使用")
-        pack_disabled = True
-    elif card_status.get("type") == "times" and card_status.get("remaining") is not None:
+    if not card_ok and st.session_state.card_key:
+        st.warning("卡密无效或已过期，请在左侧重新激活或留空直接使用")
+        pack_disabled = st.session_state.packing or st.session_state.pack_done
+    elif card_ok and card_status.get("type") == "times" and card_status.get("remaining") is not None:
         st.info(f"当前次卡剩余 {card_status['remaining']} 次，每次打包扣减 1 次")
         pack_disabled = st.session_state.packing or st.session_state.pack_done
     else:
@@ -499,7 +532,17 @@ if st.session_state.architect_done and st.session_state.agent_config:
             if result.success:
                 st.session_state.last_zip_path = result.output_path
                 st.session_state.pack_done = True
-                card_mgr.consume_quota(st.session_state.card_key)
+                if st.session_state.card_key:
+                    card_mgr.consume_quota(st.session_state.card_key)
+                _save_session_state({
+                    "agent_config": st.session_state.agent_config,
+                    "system_prompt": st.session_state.system_prompt,
+                    "agent_name": st.session_state.agent_name,
+                    "architect_done": True,
+                    "pack_done": True,
+                    "last_zip_path": result.output_path,
+                    "history": st.session_state.history,
+                })
                 st.rerun()
             else:
                 st.error(f"打包失败: {result.message}")
@@ -539,6 +582,7 @@ if st.session_state.pack_done and st.session_state.last_zip_path:
             if st.button("再做一个", use_container_width=True):
                 for k in ("agent_config", "system_prompt", "agent_name", "architect_done", "pack_done", "last_zip_path"):
                     st.session_state[k] = _defaults[k]
+                _save_session_state({})
                 st.rerun()
 
         st.markdown("</div>", unsafe_allow_html=True)

@@ -76,7 +76,7 @@ class DeepSeekClient:
         self,
         api_key: Optional[str] = None,
         base_url: Optional[str] = None,
-        model: str = "deepseek-chat",
+        model: str = "your-model-name",
         prompt_loader: Optional[Callable[[], str]] = None,
         max_retries: int = 3,
         base_delay: float = 1.0,

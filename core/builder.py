@@ -383,9 +383,9 @@ class AgentBuilder:
         # 清理 system_prompt 中的三重引号冲突（避免破坏 Python 字符串）
         system_prompt = system_prompt.replace('"""', '\\"\\"\\"')
 
-        api_key = self.api_key or "sk-your-api-key-here"
-        base_url = self.base_url or "https://token-plan-cn.xiaomimimo.com/v1"
-        model_name = self.model_name or "mimo-v2.5-pro"
+        api_key = self.api_key or "your-api-key"
+        base_url = self.base_url or "https://your-api-provider.com/v1"
+        model_name = self.model_name or "your-model-name"
 
         # 替换
         result = template.replace("{AGENT_NAME}", agent_name)
@@ -531,9 +531,10 @@ class AgentBuilder:
             "${WORKFLOW_STEPS_PLACEHOLDER}",
             json.dumps(workflow_steps, ensure_ascii=False, indent=6)
         )
-        content = content.replace("${LLM_MODEL}", self.model_name or "deepseek-chat")
-        content = content.replace("${LLM_API_KEY}", self.api_key or "sk-your-api-key-here")
-        content = content.replace("${LLM_BASE_URL}", self.base_url or "https://api.deepseek.com/v1")
+        # 模型配置：使用通用占位符，不绑定具体模型
+        content = content.replace("${LLM_MODEL}", self.model_name or "your-model-name")
+        content = content.replace("${LLM_API_KEY}", self.api_key or "your-api-key")
+        content = content.replace("${LLM_BASE_URL}", self.base_url or "https://your-api-provider.com/v1")
 
         return content
 
@@ -701,11 +702,11 @@ kind: "app"
 
 model_config:
   provider: "openai_api_compatible"
-  model_id: "deepseek-chat"
+  model_id: "your-model-name"
   model_config:
-    name: "DeepSeek V3"
+    name: "your-model-name"
     provider: "openai_api_compatible"
-    model_name: "deepseek-chat"
+    model_name: "your-model-name"
     mode: "chat"
     completion_params:
       temperature: 0.7
@@ -860,8 +861,8 @@ workflow:
 
   "model_config": {{
     "provider": "openai_compatible",
-    "model": "deepseek-chat",
-    "base_url": "https://api.deepseek.com/v1",
+    "model": "your-model-name",
+    "base_url": "https://your-api-provider.com/v1",
     "api_key": "你的_API_Key",
     "temperature": 0.7,
     "max_tokens": 4096
@@ -897,7 +898,7 @@ workflow:
             "description": f"专为 {scenario} 场景定制",
             "persona": {"role": agent_name, "expertise": [scenario]},
             "prompt": {"system_prompt": escaped_prompt, "few_shot_examples": []},
-            "model_config": {"provider": "openai_compatible", "model": "deepseek-chat", "api_key": "你的_API_Key"},
+            "model_config": {"provider": "openai_compatible", "model": "your-model-name", "api_key": "你的_API_Key"},
         }
         return json.dumps(fallback, ensure_ascii=False, indent=2)
 
@@ -905,7 +906,7 @@ workflow:
     #  飞书 Bot 渲染
     # ------------------------------------------------------------------
     def _build_feishu_bot(self, agent_name: str, workflow_steps: list) -> str:
-        """把 workflow_steps 注入飞书卡片消息模板（使用提取的标准化模板）"""
+        """把 workflow_steps 注入飞书部署配置（OpenClaw 官方格式 + 卡片消息模板）"""
         scenario = self.config.get("required_skills", ["通用任务"])
         if isinstance(scenario, list):
             scenario = ", ".join(scenario) if scenario else "通用任务"
@@ -939,15 +940,35 @@ workflow:
 # 智能体名称：{agent_name}
 # 流水线节点：{len(workflow_steps)} 步质量门禁
 #
-# 部署步骤：
-# 1. 打开飞书开放平台：https://open.feishu.cn/app
-# 2. 创建「企业自建应用」
-# 3. 在「能力」→「机器人」中启用机器人功能
-# 4. 在「事件订阅」中配置 Webhook 回调地址（你部署 app.py 的服务器地址）
-# 5. 订阅事件：im.message.receive_v1（接收消息）
-# 6. 发布应用 → 添加到群聊 → @机器人 即可使用
+# 部署方式一：通过 OpenClaw 网关接入（推荐，无需公网IP）
+#   1. 将 adapters/openclaw/config.yaml 提供给 OpenClaw 部署方
+#   2. OpenClaw 使用 WebSocket 长连接自动连接飞书
+#   3. 无需配置回调地址、无需公网服务器
+#
+# 部署方式二：直接部署飞书回调服务
+#   1. 打开飞书开放平台：https://open.feishu.cn/app
+#   2. 创建「企业自建应用」
+#   3. 在「应用功能」→「机器人」中启用机器人功能
+#   4. 在「事件与回调」→「事件订阅」中配置：
+#      - 连接方式：WebSocket（推荐）或 Webhook
+#      - 如选 Webhook，回调地址填：http://你的服务器:8000/webhook/event
+#   5. 订阅事件：im.message.receive_v1（接收消息）
+#   6. 记下 App ID / App Secret / Verification Token / Encrypt Key
+#   7. 发布应用 → 添加到群聊 → @机器人 即可使用
 # ============================================================
 
+# --- OpenClaw 渠道配置（直接复制到 OpenClaw config.yaml 的 channels 段） ---
+channels:
+  feishu:
+    enabled: true
+    appId: "你的App_ID"
+    appSecret: "你的App_Secret"
+    verificationToken: "你的Verification_Token"
+    encryptKey: "你的Encrypt_Key"
+    connectionMode: "websocket"
+    domain: "feishu"
+
+# --- 飞书应用信息 ---
 飞书应用配置:
   应用名称: "{agent_name}"
   应用描述: "专为【{scenario}】场景定制的高端 AI 流水线，内置 {len(workflow_steps)} 步质量门禁"
@@ -971,10 +992,10 @@ workflow:
 {json.dumps(done_card, ensure_ascii=False, indent=2)}
 
 # ----------------------------------------------------------
-# 回调配置
+# 回调配置（直接部署模式使用）
 # ----------------------------------------------------------
 回调处理:
-  接收消息: "POST /webhook/feishu"
+  接收消息: "POST /webhook/event"
   逻辑:
     - 收到消息 → 发送「处理中卡片」
     - 调用流水线处理 → 更新卡片为「完成卡片」

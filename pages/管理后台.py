@@ -95,24 +95,25 @@ with tab_api:
     )
     base_url = st.text_input(
         "Base URL",
-        value=cfg.get("api_base_url", "https://token-plan-cn.xiaomimimo.com/v1"),
-        placeholder="https://token-plan-cn.xiaomimimo.com/v1",
+        value=cfg.get("api_base_url", "https://api.deepseek.com/v1"),
+        placeholder="https://api.deepseek.com/v1",
         key="admin_base_url",
     )
     model = st.text_input(
         "Model",
-        value=cfg.get("api_model", "mimo-v2.5-pro"),
-        placeholder="mimo-v2.5-pro",
+        value=cfg.get("api_model", ""),
+        placeholder="deepseek-chat / qwen-plus / glm-4-flash 等",
         key="admin_model",
     )
 
     st.markdown("---")
     st.markdown("**常用模型配置参考：**")
     st.code(
-        "小米 MiMo:  URL=https://token-plan-cn.xiaomimimo.com/v1  Model=mimo-v2.5-pro\n"
-        "DeepSeek:   URL=https://api.deepseek.com/v1              Model=deepseek-chat\n"
+        "DeepSeek:   URL=https://api.deepseek.com/v1                    Model=deepseek-chat\n"
         "通义千问:    URL=https://dashscope.aliyuncs.com/compatible-mode/v1  Model=qwen-plus\n"
-        "智谱 GLM:   URL=https://open.bigmodel.cn/api/paas/v4     Model=glm-4-flash",
+        "智谱 GLM:   URL=https://open.bigmodel.cn/api/paas/v4           Model=glm-4-flash\n"
+        "小米 MiMo:  URL=https://token-plan-cn.xiaomimimo.com/v1        Model=mimo-v2.5-pro\n"
+        "Claude中转: URL=https://你的中转地址/v1                         Model=claude-3-sonnet",
         language=None,
     )
 
