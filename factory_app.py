@@ -32,6 +32,14 @@ def _load_persisted_config() -> dict:
     return {}
 
 
+def _save_persisted_config(cfg: dict):
+    try:
+        _CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        _CONFIG_PATH.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+
+
 _PERSISTED = _load_persisted_config()
 
 from core.llm_client import DeepSeekClient
