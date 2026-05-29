@@ -35,8 +35,6 @@ services:
       - ./output_agents:/app/output_agents
       # 持久化：数据库 + 配置（挂载目录避免 Docker 创建目录覆盖文件）
       - ./data:/app/data
-      # 持久化：配置文件
-      - ./.factory_config.json:/app/.factory_config.json
     restart: unless-stopped
     networks:
       - factory-net

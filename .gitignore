@@ -39,6 +39,7 @@ Thumbs.db
 .env.local
 .env.production
 .factory_config.json
+data/factory_config.json
 
 # 数据库
 data/

@@ -20,7 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 # ---------------------------------------------------------------------------
 #  配置持久化
 # ---------------------------------------------------------------------------
-_CONFIG_PATH = Path(__file__).resolve().parent / ".factory_config.json"
+_CONFIG_PATH = Path(__file__).resolve().parent / "data" / "factory_config.json"
 
 
 def _load_persisted_config() -> dict:

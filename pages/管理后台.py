@@ -20,7 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from core.card_manager import CardManager
 
 # 配置持久化路径（与 factory_app.py 共享）
-_CONFIG_PATH = Path(__file__).resolve().parent.parent / ".factory_config.json"
+_CONFIG_PATH = Path(__file__).resolve().parent.parent / "data" / "factory_config.json"
 
 
 def _load_config() -> dict:
@@ -34,6 +34,7 @@ def _load_config() -> dict:
 
 def _save_config(cfg: dict):
     try:
+        _CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
         _CONFIG_PATH.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
     except Exception:
         pass
